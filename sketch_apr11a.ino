@@ -4,6 +4,7 @@
 #include "src/ui/ui_manager.h"
 #include "src/wifi/wifi_manager.h"
 #include "src/state/session_machine.h"
+#include "src/api/api_client.h"
 
 void setup() {
     // 1. Serial Initialization
@@ -22,6 +23,7 @@ void setup() {
 
     // 5. WiFi Initialization
     WiFiManagerWrapper::getInstance().init();
+    APIClient::getInstance().init();
 
     // 6. Transition to Home after a short delay (Simulating boot process)
     delay(2000); 
@@ -34,6 +36,7 @@ void loop() {
     // Update background tasks
     WiFiManagerWrapper::getInstance().update();
     SessionMachine::getInstance().update();
+    APIClient::getInstance().update();
     
     delay(100);
 }

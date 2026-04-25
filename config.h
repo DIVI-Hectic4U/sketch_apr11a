@@ -1,6 +1,9 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// Backend Configuration
+#define BACKEND_URL "https://backend-node-ascent.onrender.com" // <-- Update with your backend IP
+
 #define LGFX_USE_V1
 #include <LovyanGFX.hpp>
 

@@ -4,6 +4,12 @@
 #include "../widgets/stat_card.h"
 #include "../ui_manager.h"
 #include "../../state/session_machine.h"
+#include "../../api/api_client.h"
+
+static void refresh_btn_event_cb(lv_event_t * e) {
+    APIClient::getInstance().fetchDashboard();
+    UIManager::getInstance().moveTo(Screen::HOME); // Refresh the current screen
+}
 
 static void wifi_btn_event_cb(lv_event_t * e) {
     UIManager::getInstance().moveTo(Screen::WIFI);
@@ -58,10 +64,14 @@ lv_obj_t* create_screen_home() {
     lv_obj_t* refresh_btn = lv_btn_create(header);
     lv_obj_set_size(refresh_btn, 40, 30);
     lv_obj_align(refresh_btn, LV_ALIGN_RIGHT_MID, -10, 0);
-    lv_obj_set_style_bg_color(refresh_btn, lv_color_hex(0x334155), 0);
-    lv_obj_t* refresh_lbl = lv_label_create(refresh_btn);
-    lv_label_set_text(refresh_lbl, "R");
-    lv_obj_center(refresh_lbl);
+    lv_obj_set_style_bg_opa(refresh_btn, 0, 0);
+    lv_obj_set_style_border_width(refresh_btn, 0, 0);
+    lv_obj_add_event_cb(refresh_btn, refresh_btn_event_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t* refresh_icon = lv_label_create(refresh_btn);
+    lv_label_set_text(refresh_icon, LV_SYMBOL_REFRESH);
+    lv_obj_set_style_text_color(refresh_icon, lv_color_white(), 0);
+    lv_obj_center(refresh_icon);
 
     // --- Stats Row ---
     lv_obj_t* stat_row = lv_obj_create(scr);

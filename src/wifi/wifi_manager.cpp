@@ -8,8 +8,15 @@ void WiFiManagerWrapper::init() {
 }
 
 void WiFiManagerWrapper::scanNetworks() {
+    Serial.println("WiFi: Preparing scan...");
+    
+    // Ensure we are in station mode and disconnected to avoid conflicts
+    WiFi.mode(WIFI_STA);
+    WiFi.disconnect();
+    delay(100);
+
     Serial.println("WiFi: Scanning...");
-    int n = WiFi.scanNetworks();
+    int n = WiFi.scanNetworks(false, true, false, 150); // Async=false, show_hidden=true, passive=false, time_per_chan=150ms
     
     AppState& state = AppState::getInstance();
     state.scannedSSIDs.clear();

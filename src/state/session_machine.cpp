@@ -1,5 +1,6 @@
 #include "session_machine.h"
 #include "app_state.h"
+#include "../api/api_client.h"
 
 void SessionMachine::start(int minutes) {
     totalSeconds = minutes * 60;
@@ -10,6 +11,9 @@ void SessionMachine::start(int minutes) {
     AppState& app = AppState::getInstance();
     app.isSessionRunning = true;
     app.sessionRemainingSeconds = remainingSeconds;
+
+    // Sync with backend (using active task name for now, or ID if available)
+    APIClient::getInstance().startSession(app.currentTaskName, minutes);
 }
 
 void SessionMachine::pause() {
@@ -29,6 +33,7 @@ void SessionMachine::stop() {
     state = SessionState::IDLE;
     remainingSeconds = 0;
     AppState::getInstance().isSessionRunning = false;
+    APIClient::getInstance().stopSession();
 }
 
 void SessionMachine::update() {

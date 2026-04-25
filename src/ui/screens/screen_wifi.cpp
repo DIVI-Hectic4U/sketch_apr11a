@@ -15,7 +15,12 @@ static void back_event_cb(lv_event_t * e) {
 }
 
 static void scan_btn_cb(lv_event_t * e) {
+    lv_obj_clean(network_list);
+    lv_list_add_text(network_list, "Scanning...");
+    lv_timer_handler(); // Force redraw
+    
     WiFiManagerWrapper::getInstance().scanNetworks();
+    
     // Re-create the list items
     lv_obj_clean(network_list);
     AppState& state = AppState::getInstance();
