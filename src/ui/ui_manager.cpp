@@ -1,71 +1,32 @@
+#define LV_CONF_SKIP
 #include "ui_manager.h"
 #include "../state/app_state.h"
+#include "screens/screen_boot.h"
+#include "screens/screen_home.h"
+#include "screens/screen_focus.h"
+#include "screens/screen_wifi.h"
 
 void UIManager::moveTo(Screen screen) {
     lv_obj_t* new_screen = nullptr;
 
     switch (screen) {
         case Screen::BOOT:
-            new_screen = createBootScreen();
+            new_screen = create_screen_boot();
             break;
         case Screen::HOME:
-            new_screen = createHomeScreen();
+            new_screen = create_screen_home();
             break;
         case Screen::FOCUS:
-            new_screen = createFocusScreen();
+            new_screen = create_screen_focus();
             break;
         case Screen::WIFI:
-            new_screen = createWifiScreen();
+            new_screen = create_screen_wifi();
             break;
     }
 
     if (new_screen) {
+        // Part 3 requirement: Use lv_scr_load_anim with FADE_ON (200ms)
         lv_screen_load_anim(new_screen, LV_SCR_LOAD_ANIM_FADE_ON, 200, 0, true);
         currentScreen = screen;
     }
-}
-
-lv_obj_t* UIManager::createBootScreen() {
-    lv_obj_t* scr = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(scr, lv_color_hex(0x1A1A1A), 0);
-    
-    lv_obj_t* label = lv_label_create(scr);
-    lv_label_set_text(label, "FocusOS Booting...");
-    lv_obj_center(label);
-    lv_obj_set_style_text_color(label, lv_color_white(), 0);
-    
-    return scr;
-}
-
-lv_obj_t* UIManager::createHomeScreen() {
-    lv_obj_t* scr = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(scr, lv_color_hex(0x003366), 0);
-    
-    lv_obj_t* label = lv_label_create(scr);
-    lv_label_set_text(label, "Dashboard (Home)");
-    lv_obj_center(label);
-    lv_obj_set_style_text_color(label, lv_color_white(), 0);
-    
-    lv_obj_t* info = lv_label_create(scr);
-    lv_label_set_text(info, "Part 1 Implemented");
-    lv_obj_align(info, LV_ALIGN_BOTTOM_MID, 0, -20);
-    lv_obj_set_style_text_color(info, lv_color_hex(0xCCCCCC), 0);
-    
-    return scr;
-}
-
-lv_obj_t* UIManager::createFocusScreen() {
-    lv_obj_t* scr = lv_obj_create(NULL);
-    lv_obj_t* label = lv_label_create(scr);
-    lv_label_set_text(label, "Focus Timer Stub");
-    lv_obj_center(label);
-    return scr;
-}
-
-lv_obj_t* UIManager::createWifiScreen() {
-    lv_obj_t* scr = lv_obj_create(NULL);
-    lv_obj_t* label = lv_label_create(scr);
-    lv_label_set_text(label, "WiFi Settings Stub");
-    lv_obj_center(label);
-    return scr;
 }
