@@ -5,7 +5,7 @@
 
 /**
  * WiFiManagerWrapper
- * Handles non-blocking WiFi connection and status reporting.
+ * Handles in-app scanning and connection management.
  */
 class WiFiManagerWrapper {
 public:
@@ -14,21 +14,25 @@ public:
         return instance;
     }
 
-    /**
-     * Initializes WiFi and starts a non-blocking connection attempt.
-     */
     void init();
+    void update();
+    
+    /**
+     * Scans for nearby WiFi networks and populates AppState.
+     */
+    void scanNetworks();
 
     /**
-     * Periodic update function to check status and handle reconnection.
+     * Connects to a specific network.
+     * @param ssid The SSID to connect to.
+     * @param password The password for the network.
      */
-    void update();
+    void connectTo(String ssid, String password);
 
     bool isConnected() const { return WiFi.status() == WL_CONNECTED; }
 
 private:
     WiFiManagerWrapper() {}
-    unsigned long lastCheck = 0;
 };
 
 #endif // WIFI_MANAGER_CUSTOM_H

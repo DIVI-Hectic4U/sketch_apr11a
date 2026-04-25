@@ -5,6 +5,10 @@
 #include "../ui_manager.h"
 #include "../../state/session_machine.h"
 
+static void wifi_btn_event_cb(lv_event_t * e) {
+    UIManager::getInstance().moveTo(Screen::WIFI);
+}
+
 static void focus_btn_event_cb(lv_event_t * e) {
     TaskInfo* task = (TaskInfo*)lv_event_get_user_data(e);
     if (task) {
@@ -39,10 +43,17 @@ lv_obj_t* create_screen_home() {
     lv_obj_set_style_text_color(title, lv_color_white(), 0);
     lv_obj_align(title, LV_ALIGN_LEFT_MID, 10, 0);
     
-    lv_obj_t* wifi_icon = lv_label_create(header);
+    lv_obj_t* wifi_btn = lv_btn_create(header);
+    lv_obj_set_size(wifi_btn, 100, 30);
+    lv_obj_align(wifi_btn, LV_ALIGN_RIGHT_MID, -60, 0);
+    lv_obj_set_style_bg_opa(wifi_btn, 0, 0);
+    lv_obj_set_style_border_width(wifi_btn, 0, 0);
+    lv_obj_add_event_cb(wifi_btn, wifi_btn_event_cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t* wifi_icon = lv_label_create(wifi_btn);
     lv_label_set_text(wifi_icon, state.isWifiConnected ? "WiFi: ON" : "WiFi: OFF");
     lv_obj_set_style_text_color(wifi_icon, state.isWifiConnected ? lv_color_hex(0x10B981) : lv_color_hex(0xEF4444), 0);
-    lv_obj_align(wifi_icon, LV_ALIGN_RIGHT_MID, -60, 0);
+    lv_obj_center(wifi_icon);
 
     lv_obj_t* refresh_btn = lv_btn_create(header);
     lv_obj_set_size(refresh_btn, 40, 30);
