@@ -3,6 +3,7 @@
 #include "src/state/app_state.h"
 #include "src/ui/ui_manager.h"
 #include "src/wifi/wifi_manager.h"
+#include "src/state/session_machine.h"
 
 void setup() {
     // 1. Serial Initialization
@@ -30,8 +31,9 @@ void setup() {
 }
 
 void loop() {
-    // Update WiFi and other background tasks
+    // Update background tasks
     WiFiManagerWrapper::getInstance().update();
+    SessionMachine::getInstance().update();
     
     delay(100);
 }

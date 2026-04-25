@@ -3,8 +3,21 @@
 #include "../../state/app_state.h"
 #include "../widgets/stat_card.h"
 #include "../ui_manager.h"
+#include "../../state/session_machine.h"
 
-static lv_obj_t* create_task_row(lv_obj_t* parent, const TaskInfo& task);
+static void focus_btn_event_cb(lv_event_t * e) {
+    TaskInfo* task = (TaskInfo*)lv_event_get_user_data(e);
+    if (task) {
+        AppState& state = AppState::getInstance();
+        state.currentTaskName = task->name;
+        state.currentSubtaskName = task->subtask;
+        
+        SessionMachine::getInstance().start(25); // Start 25min focus session
+        UIManager::getInstance().moveTo(Screen::FOCUS);
+    }
+}
+
+static lv_obj_t* create_task_row(lv_obj_t* parent, TaskInfo& task);
 
 lv_obj_t* create_screen_home() {
     AppState& state = AppState::getInstance();
@@ -70,8 +83,8 @@ lv_obj_t* create_screen_home() {
     lv_obj_align(task_label, LV_ALIGN_TOP_LEFT, 20, 135);
     lv_obj_set_style_pad_top(task_container, 25, 0);
 
-    for (const auto& task : state.tasks) {
-        create_task_row(task_container, task);
+    for (size_t i = 0; i < state.tasks.size(); ++i) {
+        create_task_row(task_container, state.tasks[i]);
     }
 
     // --- Footer ---
@@ -94,7 +107,7 @@ lv_obj_t* create_screen_home() {
     return scr;
 }
 
-static lv_obj_t* create_task_row(lv_obj_t* parent, const TaskInfo& task) {
+static lv_obj_t* create_task_row(lv_obj_t* parent, TaskInfo& task) {
     lv_obj_t* row = lv_obj_create(parent);
     lv_obj_set_size(row, LV_PCT(100), 55);
     lv_obj_set_style_bg_color(row, lv_color_hex(0x1E293B), 0);
@@ -139,6 +152,7 @@ static lv_obj_t* create_task_row(lv_obj_t* parent, const TaskInfo& task) {
     lv_obj_set_size(focus_btn, 70, 30);
     lv_obj_align(focus_btn, LV_ALIGN_RIGHT_MID, 0, 0);
     lv_obj_set_style_bg_color(focus_btn, lv_color_hex(0x10B981), 0);
+    lv_obj_add_event_cb(focus_btn, focus_btn_event_cb, LV_EVENT_CLICKED, (void*)&task);
     
     lv_obj_t* focus_lbl = lv_label_create(focus_btn);
     lv_label_set_text(focus_lbl, "Focus");
