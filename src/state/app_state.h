@@ -5,6 +5,12 @@
 #include <vector>
 #include <Preferences.h>
 
+struct ScannedNetwork {
+    String ssid;
+    int rssi;
+    bool isOpen;
+};
+
 /**
  * TaskInfo
  * Data structure representing a task in the dashboard.
@@ -15,6 +21,7 @@ struct TaskInfo {
     String subtask;
     int progress; // 0-100
     int priority; // 0: low (blue), 1: med (yellow), 2: high (red)
+    int suggestedDuration; // in minutes (calibrated from backend)
 };
 
 /**
@@ -32,7 +39,7 @@ public:
     bool isWifiConnected = false;
     String localIP = "0.0.0.0";
     String currentSSID = "Not Connected";
-    std::vector<String> scannedSSIDs;
+    std::vector<ScannedNetwork> scannedNetworks;
     
     // User Metrics
     int xp = 0;
@@ -40,6 +47,11 @@ public:
     int spoonsTotal = 12;
     int streakDays = 0;
     int level = 1;
+    int points = 0;
+    int preferredBreakDuration = 5; // minutes
+    int hyperFocusDuration = 45; // minutes
+    int cycleCount = 0;
+    String pomodoroMode = "flexible";
 
     // Session Info
     String currentTaskName = "No active task";
@@ -50,14 +62,19 @@ public:
     // User Settings (Persistent)
     String userId = "default_user";
     String deviceId = "";
+    String deviceToken = "";
 
     // Dashboard Data
     std::vector<TaskInfo> tasks;
+
+    // Cross-core signaling flags (set on Core 1, consumed on Core 0)
+    volatile bool dashboardDirty = false;
 
     void load() {
         Preferences prefs;
         prefs.begin("focusos", true);
         userId = prefs.getString("user_id", "default_user");
+        deviceToken = prefs.getString("device_token", "");
         xp = prefs.getInt("xp", 0);
         level = prefs.getInt("level", 1);
         prefs.end();
@@ -68,6 +85,7 @@ public:
         Preferences prefs;
         prefs.begin("focusos", false);
         prefs.putString("user_id", userId);
+        prefs.putString("device_token", deviceToken);
         prefs.putInt("xp", xp);
         prefs.putInt("level", level);
         prefs.end();

@@ -7,6 +7,7 @@
 #include "screens/screen_wifi.h"
 
 void UIManager::moveTo(Screen screen) {
+    Serial.printf("[UI] moveTo screen %d...\n", (int)screen);
     lv_obj_t* new_screen = nullptr;
 
     switch (screen) {
@@ -25,7 +26,6 @@ void UIManager::moveTo(Screen screen) {
     }
 
     if (new_screen) {
-        // Part 3 requirement: Use lv_scr_load_anim with FADE_ON (200ms)
         lv_screen_load_anim(new_screen, LV_SCR_LOAD_ANIM_FADE_ON, 200, 0, true);
         currentScreen = screen;
     }

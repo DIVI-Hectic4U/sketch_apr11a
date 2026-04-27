@@ -22,6 +22,7 @@ public:
     void fetchDashboard();
     void startSession(String taskId, int durationMinutes);
     void stopSession();
+    void pairDevice(String code);
 
     bool isConnected = false;
     void onEvent(WStype_t type, uint8_t * payload, size_t length);

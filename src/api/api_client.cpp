@@ -3,29 +3,23 @@
 #include "../state/app_state.h"
 #include "../../config.h"
 
-// Static trampoline so the C-style callback can reach our instance method
+// Static trampoline
 static void wsEventTrampoline(WStype_t type, uint8_t * payload, size_t length) {
     APIClient::getInstance().onEvent(type, payload, length);
 }
 
 void APIClient::init() {
-    // Don't connect here — WiFi isn't ready yet at boot.
-    // Connection will happen in update() once WiFi is available.
-    Serial.println("WS: API Client initialized. Waiting for WiFi...");
+    Serial.println("WS: API Client initialized.");
 }
 
 void APIClient::connect() {
     AppState& state = AppState::getInstance();
-    if (state.userId.length() == 0) {
-        Serial.println("WS: No userId set. Skipping connection.");
-        return;
-    }
+    if (state.deviceToken.length() == 0 && state.userId.length() == 0) return;
 
-    String path = "/?token=" + state.userId;
+    String path = (state.deviceToken.length() > 0) 
+                  ? "/?deviceToken=" + state.deviceToken 
+                  : "/?token=" + state.userId;
 
-    Serial.printf("WS: beginSSL to backend-node-ascent.onrender.com:443 path=%s\n", path.c_str());
-
-    // beginSSL handles wss:// connections with port 443
     ws.beginSSL("backend-node-ascent.onrender.com", 443, path.c_str());
     ws.onEvent(wsEventTrampoline);
     ws.setReconnectInterval(5000);
@@ -35,57 +29,50 @@ static bool wsInitialized = false;
 
 void APIClient::update() {
     AppState& state = AppState::getInstance();
-    
-    // Deferred connection: wait until WiFi is ready, then connect once
     if (!wsInitialized && state.isWifiConnected && state.userId.length() > 0) {
-        Serial.println("WS: WiFi is ready. Initiating connection...");
         connect();
         wsInitialized = true;
     }
-    
-    if (wsInitialized) {
-        ws.loop();
-    }
+    if (wsInitialized) ws.loop();
 }
 
 void APIClient::fetchDashboard() {
-    if (!isConnected) return;
-    ws.sendTXT("{\"action\":\"fetch_dashboard\"}");
+    if (isConnected) ws.sendTXT("{\"action\":\"fetch_dashboard\"}");
 }
 
 void APIClient::startSession(String taskId, int durationMinutes) {
-    if (!isConnected) return;
-    String msg = "{\"action\":\"start\",\"duration\":" + String(durationMinutes) + ",\"taskId\":\"" + taskId + "\"}";
-    ws.sendTXT(msg);
+    if (isConnected) {
+        String msg = "{\"action\":\"start\",\"duration\":" + String(durationMinutes) + ",\"taskId\":\"" + taskId + "\"}";
+        ws.sendTXT(msg);
+    }
 }
 
 void APIClient::stopSession() {
-    if (!isConnected) return;
-    ws.sendTXT("{\"action\":\"stop\"}");
+    if (isConnected) ws.sendTXT("{\"action\":\"stop\"}");
+}
+
+void APIClient::pairDevice(String code) {
+    if (isConnected) {
+        String msg = "{\"action\":\"pair\",\"code\":\"" + code + "\"}";
+        ws.sendTXT(msg);
+    }
 }
 
 void APIClient::onEvent(WStype_t type, uint8_t * payload, size_t length) {
     switch(type) {
         case WStype_DISCONNECTED:
-            Serial.println("WS: Disconnected.");
             isConnected = false;
             break;
-
         case WStype_CONNECTED:
-            Serial.printf("WS: Connected to %s\n", (char*)payload);
             isConnected = true;
-            fetchDashboard(); // Get initial data on connect
+            fetchDashboard();
             break;
-
         case WStype_TEXT: {
-            Serial.printf("WS: Received %u bytes\n", length);
-
-            JsonDocument doc;
+            // Allocate JSON document on the HEAP to save Stack space
+            // For 1.8KB, we use a 4KB pool
+            DynamicJsonDocument doc(4096); 
             DeserializationError error = deserializeJson(doc, payload, length);
-            if (error) {
-                Serial.printf("WS: JSON parse error: %s\n", error.c_str());
-                return;
-            }
+            if (error) return;
 
             String msgType = doc["type"] | "";
             AppState& state = AppState::getInstance();
@@ -93,45 +80,67 @@ void APIClient::onEvent(WStype_t type, uint8_t * payload, size_t length) {
             if (msgType == "dashboard_update") {
                 JsonObject pl = doc["payload"];
                 JsonObject stats = pl["stats"];
-                state.xp = stats["pointsEarned"] | 0;
+                state.xp = stats["totalXP"] | 0;
+                state.points = stats["pointsEarned"] | 0;
                 state.level = stats["level"] | 1;
                 state.streakDays = stats["currentStreak"] | 0;
+                state.preferredBreakDuration = stats["preferredBreakDuration"] | 5;
+                state.hyperFocusDuration = stats["hyperFocusDuration"] | 45;
+                state.cycleCount = stats["cycleCount"] | 0;
+                state.pomodoroMode = stats["pomodoroMode"] | "flexible";
 
                 JsonObject spoons = stats["spoonState"];
                 state.spoonsUsed = spoons["remaining"] | 12;
-                state.spoonsTotal = spoons["budget"] | 12;
+                state.spoonsTotal = spoons["total"] | 12;
 
-                state.tasks.clear();
+                // CRITICAL: Clear existing tasks before sync to prevent duplication/leaks
+                state.tasks.clear(); 
+                
                 JsonArray tasksArr = pl["tasks"];
+                state.tasks.reserve(tasksArr.size());
+
+                int id_counter = 0;
                 for (JsonObject t : tasksArr) {
+                    // Skip tasks already marked completed
+                    String status = t["status"] | "";
+                    bool isCompleted = t["completed"] | false;
+                    if (status == "completed" || isCompleted) continue;
+
                     TaskInfo task;
-                    task.id = 0;
+                    task.id = id_counter++; 
                     task.name = t["title"] | "Untitled";
+                    task.suggestedDuration = t["suggestedDuration"] | 25;
+                    
+                    // Find first incomplete subtask
                     JsonArray subtasks = t["subtasks"];
-                    if (subtasks.size() > 0) {
-                        task.subtask = subtasks[0]["title"] | "---";
-                    } else {
-                        task.subtask = "---";
+                    String firstPending = "---";
+                    for (JsonObject st : subtasks) {
+                        bool stComp = st["completed"] | false;
+                        if (!stComp) {
+                            firstPending = st["title"] | "---";
+                            break;
+                        }
                     }
+                    
+                    task.subtask = firstPending;
                     task.progress = t["progress"] | 0;
+                    
+                    // Map string priority to int
+                    String pStr = t["priority"] | "medium";
+                    if (pStr == "high") task.priority = 2;
+                    else if (pStr == "low") task.priority = 0;
+                    else task.priority = 1;
+
                     state.tasks.push_back(task);
                 }
                 Serial.printf("WS: Dashboard synced (%d tasks)\n", state.tasks.size());
+                state.dashboardDirty = true;
             }
             else if (msgType == "timer_update") {
-                Serial.println("WS: Timer update received.");
+                // Future use
             }
             break;
         }
-
-        case WStype_PING:
-            Serial.println("WS: Ping");
-            break;
-
-        case WStype_PONG:
-            break;
-
-        default:
-            break;
+        default: break;
     }
 }

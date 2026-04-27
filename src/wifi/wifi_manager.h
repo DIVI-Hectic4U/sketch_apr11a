@@ -18,21 +18,23 @@ public:
     void update();
     
     /**
-     * Scans for nearby WiFi networks and populates AppState.
+     * Starts an asynchronous scan for nearby WiFi networks.
      */
-    void scanNetworks();
+    void scanNetworksAsync();
 
     /**
-     * Connects to a specific network.
+     * Connects to a specific network and saves credentials to NVS.
      * @param ssid The SSID to connect to.
      * @param password The password for the network.
      */
     void connectTo(String ssid, String password);
 
     bool isConnected() const { return WiFi.status() == WL_CONNECTED; }
+    bool isScanning() const { return _isScanning; }
 
 private:
     WiFiManagerWrapper() {}
+    bool _isScanning = false;
 };
 
 #endif // WIFI_MANAGER_CUSTOM_H
