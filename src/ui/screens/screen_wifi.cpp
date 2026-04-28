@@ -12,6 +12,8 @@ static lv_timer_t* scan_timer = NULL;
 static lv_timer_t* pair_timer = NULL;
 static lv_obj_t* pair_lbl;
 static lv_obj_t* pair_btn;
+static lv_obj_t* status_lbl = NULL;
+static lv_obj_t* active_screen_obj = NULL;
 
 static String selected_ssid = "";
 static String pairing_code = "";
@@ -33,12 +35,16 @@ static void update_network_list() {
 
     for (size_t i = 0; i < state.scannedNetworks.size(); ++i) {
         const auto& net = state.scannedNetworks[i];
-        String label = String(net.isOpen ? "🔓" : "🔒") + " " + net.ssid + " (" + String(net.rssi) + "dBm)";
+        String label = String(net.isOpen ? LV_SYMBOL_WIFI : LV_SYMBOL_SETTINGS) + " " + net.ssid;
         lv_obj_t * btn = lv_list_add_btn(network_list, NULL, label.c_str());
+        lv_obj_set_style_bg_color(btn, lv_color_hex(0xFFFFFF), 0);
+        lv_obj_set_style_text_color(btn, lv_color_hex(0x0F172A), 0);
+        lv_obj_set_style_text_font(btn, &lv_font_montserrat_14, 0);
         
         lv_obj_add_event_cb(btn, [](lv_event_t* ev){
             int idx = lv_obj_get_index((lv_obj_t*)lv_event_get_target(ev));
-            if (idx >= 0 && idx < AppState::getInstance().scannedNetworks.size()) {
+            // Subtract text labels if any
+            if (idx >= 0 && idx < (int)AppState::getInstance().scannedNetworks.size()) {
                 ScannedNetwork& sel = AppState::getInstance().scannedNetworks[idx];
                 selected_ssid = sel.ssid;
                 
@@ -105,7 +111,6 @@ static void pair_timer_cb(lv_timer_t* t) {
 static void pair_btn_cb(lv_event_t* e) {
     AppState& state = AppState::getInstance();
     if (state.deviceToken.length() > 0) {
-        // Already paired, allow reset
         state.deviceToken = "";
         state.save();
         lv_label_set_text(pair_lbl, "Start Pairing");
@@ -113,7 +118,6 @@ static void pair_btn_cb(lv_event_t* e) {
         return;
     }
 
-    // Generate random 6-digit code
     pairing_code = String(random(100000, 999999));
     lv_label_set_text(pair_lbl, ("Code: " + pairing_code).c_str());
     
@@ -124,72 +128,101 @@ static void pair_btn_cb(lv_event_t* e) {
     }
 }
 
+void refresh_screen_wifi() {
+    if (!active_screen_obj || !lv_obj_is_valid(active_screen_obj)) return;
+    
+    AppState& state = AppState::getInstance();
+    if (status_lbl) lv_label_set_text(status_lbl, ("WiFi: " + state.currentSSID).c_str());
+    
+    if (pair_btn && pair_lbl) {
+        bool paired = state.deviceToken.length() > 0;
+        lv_label_set_text(pair_lbl, paired ? "Paired" : "Start Pairing");
+        lv_obj_set_style_bg_color(pair_btn, paired ? lv_color_hex(0x10B981) : lv_color_hex(0x3B82F6), 0);
+    }
+}
+
 lv_obj_t* create_screen_wifi() {
     AppState& state = AppState::getInstance();
 
     lv_obj_t* scr = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(scr, lv_color_hex(0x0F172A), 0);
+    active_screen_obj = scr;
+    lv_obj_set_style_bg_color(scr, lv_color_hex(0xF8FAFC), 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
 
     // Header
     lv_obj_t* header = lv_obj_create(scr);
-    lv_obj_set_size(header, 480, 40);
-    lv_obj_set_style_bg_color(header, lv_color_hex(0x1E293B), 0);
-    lv_obj_set_style_border_width(header, 0, 0);
+    lv_obj_set_size(header, 480, 50);
     lv_obj_align(header, LV_ALIGN_TOP_MID, 0, 0);
+    lv_obj_set_style_bg_color(header, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_border_width(header, 1, 0);
+    lv_obj_set_style_border_side(header, LV_BORDER_SIDE_BOTTOM, 0);
+    lv_obj_set_style_border_color(header, lv_color_hex(0xE2E8F0), 0);
+    lv_obj_set_style_radius(header, 0, 0);
+    lv_obj_clear_flag(header, LV_OBJ_FLAG_SCROLLABLE);
 
     lv_obj_t* back_btn = lv_btn_create(header);
-    lv_obj_set_size(back_btn, 80, 30);
+    lv_obj_set_size(back_btn, 40, 35);
     lv_obj_align(back_btn, LV_ALIGN_LEFT_MID, 10, 0);
-    lv_obj_set_style_bg_color(back_btn, lv_color_hex(0x334155), 0);
+    lv_obj_set_style_bg_color(back_btn, lv_color_hex(0xF1F5F9), 0);
+    lv_obj_set_style_radius(back_btn, 8, 0);
+    lv_obj_set_style_shadow_width(back_btn, 0, 0);
     lv_obj_add_event_cb(back_btn, back_event_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t* back_lbl = lv_label_create(back_btn);
-    lv_label_set_text(back_lbl, "Back");
+    lv_label_set_text(back_lbl, LV_SYMBOL_LEFT);
+    lv_obj_set_style_text_color(back_lbl, lv_color_hex(0x0F172A), 0);
     lv_obj_center(back_lbl);
 
     lv_obj_t* title = lv_label_create(header);
     lv_label_set_text(title, "WiFi & Identity");
-    lv_obj_set_style_text_color(title, lv_color_white(), 0);
+    lv_obj_set_style_text_color(title, lv_color_hex(0x0F172A), 0);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_14, 0);
     lv_obj_align(title, LV_ALIGN_CENTER, 0, 0);
 
     // WiFi List Section
     network_list = lv_list_create(scr);
-    lv_obj_set_size(network_list, 260, 260);
-    lv_obj_align(network_list, LV_ALIGN_TOP_LEFT, 10, 50);
-    lv_obj_set_style_bg_color(network_list, lv_color_hex(0x1E293B), 0);
-    lv_obj_set_style_border_width(network_list, 0, 0);
+    lv_obj_set_size(network_list, 260, 240);
+    lv_obj_align(network_list, LV_ALIGN_TOP_LEFT, 10, 60);
+    lv_obj_set_style_bg_color(network_list, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_border_width(network_list, 1, 0);
+    lv_obj_set_style_border_color(network_list, lv_color_hex(0xE2E8F0), 0);
+    lv_obj_set_style_radius(network_list, 8, 0);
     
     // Scan Button
     lv_obj_t* scan_btn = lv_btn_create(scr);
     lv_obj_set_size(scan_btn, 80, 35);
-    lv_obj_align(scan_btn, LV_ALIGN_TOP_RIGHT, -10, 50);
+    lv_obj_align(scan_btn, LV_ALIGN_TOP_RIGHT, -120, 60);
     lv_obj_set_style_bg_color(scan_btn, lv_color_hex(0x3B82F6), 0);
+    lv_obj_set_style_radius(scan_btn, 8, 0);
     lv_obj_add_event_cb(scan_btn, scan_btn_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t* scan_lbl = lv_label_create(scan_btn);
     lv_label_set_text(scan_lbl, "Scan");
+    lv_obj_set_style_text_font(scan_lbl, &lv_font_montserrat_14, 0);
     lv_obj_center(scan_lbl);
     
     // Status
-    lv_obj_t* status_lbl = lv_label_create(scr);
-    lv_label_set_text(status_lbl, ("Status: " + state.currentSSID).c_str());
-    lv_obj_set_style_text_color(status_lbl, lv_color_white(), 0);
+    status_lbl = lv_label_create(scr);
+    lv_label_set_text(status_lbl, ("WiFi: " + state.currentSSID).c_str());
+    lv_obj_set_style_text_color(status_lbl, lv_color_hex(0x0F172A), 0);
+    lv_obj_set_style_text_font(status_lbl, &lv_font_montserrat_14, 0);
     lv_obj_align(status_lbl, LV_ALIGN_TOP_LEFT, 280, 100);
     
     // Device ID
     lv_obj_t* dev_lbl = lv_label_create(scr);
     lv_label_set_text(dev_lbl, ("ID: " + state.deviceId).c_str());
-    lv_obj_set_style_text_color(dev_lbl, lv_color_hex(0x94A3B8), 0);
+    lv_obj_set_style_text_color(dev_lbl, lv_color_hex(0x64748B), 0);
     lv_obj_set_style_text_font(dev_lbl, &lv_font_montserrat_14, 0);
     lv_obj_align(dev_lbl, LV_ALIGN_TOP_LEFT, 280, 130);
 
     // Pairing Section
     pair_btn = lv_btn_create(scr);
-    lv_obj_set_size(pair_btn, 190, 40);
+    lv_obj_set_size(pair_btn, 180, 40);
     lv_obj_align(pair_btn, LV_ALIGN_TOP_LEFT, 280, 160);
     lv_obj_set_style_bg_color(pair_btn, state.deviceToken.length() > 0 ? lv_color_hex(0x10B981) : lv_color_hex(0x3B82F6), 0);
+    lv_obj_set_style_radius(pair_btn, 8, 0);
     lv_obj_add_event_cb(pair_btn, pair_btn_cb, LV_EVENT_CLICKED, NULL);
     pair_lbl = lv_label_create(pair_btn);
-    lv_label_set_text(pair_lbl, state.deviceToken.length() > 0 ? "Paired (Tap to reset)" : "Start Pairing");
+    lv_label_set_text(pair_lbl, state.deviceToken.length() > 0 ? "Paired" : "Start Pairing");
+    lv_obj_set_style_text_font(pair_lbl, &lv_font_montserrat_14, 0);
     lv_obj_center(pair_lbl);
 
     // Password Text Area (Floating/Hidden)
@@ -197,7 +230,7 @@ lv_obj_t* create_screen_wifi() {
     lv_obj_set_size(pass_ta, 300, 40);
     lv_obj_align(pass_ta, LV_ALIGN_CENTER, 0, -20);
     lv_textarea_set_password_mode(pass_ta, true);
-    lv_textarea_set_placeholder_text(pass_ta, "Enter Password");
+    lv_textarea_set_placeholder_text(pass_ta, "Password");
     lv_obj_add_flag(pass_ta, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_event_cb(pass_ta, ta_event_cb, LV_EVENT_ALL, NULL);
 
@@ -209,6 +242,10 @@ lv_obj_t* create_screen_wifi() {
             if (lv_keyboard_get_textarea(kb) == pass_ta) {
                 connect_event_cb(e);
             }
+        }
+        if(lv_event_get_code(e) == LV_EVENT_CANCEL) {
+            lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(pass_ta, LV_OBJ_FLAG_HIDDEN);
         }
     }, LV_EVENT_ALL, NULL);
 

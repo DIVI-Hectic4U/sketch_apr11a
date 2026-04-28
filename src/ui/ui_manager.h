@@ -9,6 +9,8 @@
 enum class Screen {
     BOOT,
     HOME,
+    TASK_LIST,
+    SUBTASK_LIST,
     FOCUS,
     WIFI
 };
@@ -33,6 +35,11 @@ public:
      * Gets the current active screen.
      */
     Screen getCurrentScreen() const { return currentScreen; }
+    
+    /**
+     * Refreshes the data on the current screen without full rebuild if possible.
+     */
+    void refreshCurrentScreen();
 
 private:
     UIManager() : currentScreen(Screen::BOOT) {}

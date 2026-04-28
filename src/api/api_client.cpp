@@ -51,6 +51,13 @@ void APIClient::stopSession() {
     if (isConnected) ws.sendTXT("{\"action\":\"stop\"}");
 }
 
+void APIClient::completeSubtask(String subtaskId) {
+    if (isConnected) {
+        String msg = "{\"action\":\"complete_subtask\",\"subtaskId\":\"" + subtaskId + "\"}";
+        ws.sendTXT(msg);
+    }
+}
+
 void APIClient::pairDevice(String code) {
     if (isConnected) {
         String msg = "{\"action\":\"pair\",\"code\":\"" + code + "\"}";
@@ -99,7 +106,6 @@ void APIClient::onEvent(WStype_t type, uint8_t * payload, size_t length) {
                 JsonArray tasksArr = pl["tasks"];
                 state.tasks.reserve(tasksArr.size());
 
-                int id_counter = 0;
                 for (JsonObject t : tasksArr) {
                     // Skip tasks already marked completed
                     String status = t["status"] | "";
@@ -107,18 +113,26 @@ void APIClient::onEvent(WStype_t type, uint8_t * payload, size_t length) {
                     if (status == "completed" || isCompleted) continue;
 
                     TaskInfo task;
-                    task.id = id_counter++; 
+                    task.id = t["_id"] | "0";
                     task.name = t["title"] | "Untitled";
                     task.suggestedDuration = t["suggestedDuration"] | 25;
                     
-                    // Find first incomplete subtask
+                    // Parse subtasks
                     JsonArray subtasks = t["subtasks"];
                     String firstPending = "---";
+                    bool firstFound = false;
+                    
                     for (JsonObject st : subtasks) {
-                        bool stComp = st["completed"] | false;
-                        if (!stComp) {
-                            firstPending = st["title"] | "---";
-                            break;
+                        SubtaskInfo sub;
+                        sub.id = st["_id"] | "";
+                        sub.title = st["title"] | "Untitled";
+                        sub.completed = st["completed"] | false;
+                        
+                        task.subtasks.push_back(sub);
+                        
+                        if (!sub.completed && !firstFound) {
+                            firstPending = sub.title;
+                            firstFound = true;
                         }
                     }
                     

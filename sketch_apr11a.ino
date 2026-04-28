@@ -60,8 +60,8 @@ void loop() {
     AppState& state = AppState::getInstance();
     if (state.dashboardDirty) {
         state.dashboardDirty = false;
-        Serial.println("[UI] Dashboard dirty, rebuilding HOME...");
-        UIManager::getInstance().moveTo(Screen::HOME);
+        Serial.println("[UI] Dashboard dirty, refreshing current screen...");
+        UIManager::getInstance().refreshCurrentScreen();
     }
 
     // --- Session Machine: tick every 100ms ---

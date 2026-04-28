@@ -22,6 +22,7 @@ public:
     void fetchDashboard();
     void startSession(String taskId, int durationMinutes);
     void stopSession();
+    void completeSubtask(String subtaskId);
     void pairDevice(String code);
 
     bool isConnected = false;

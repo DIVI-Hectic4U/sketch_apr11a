@@ -11,14 +11,21 @@ struct ScannedNetwork {
     bool isOpen;
 };
 
+struct SubtaskInfo {
+    String id;
+    String title;
+    bool completed;
+};
+
 /**
  * TaskInfo
  * Data structure representing a task in the dashboard.
  */
 struct TaskInfo {
-    int id;
+    String id;
     String name;
-    String subtask;
+    String subtask; // title of first incomplete subtask for legacy compat
+    std::vector<SubtaskInfo> subtasks;
     int progress; // 0-100
     int priority; // 0: low (blue), 1: med (yellow), 2: high (red)
     int suggestedDuration; // in minutes (calibrated from backend)
@@ -58,6 +65,11 @@ public:
     String currentSubtaskName = "---";
     int sessionRemainingSeconds = 0;
     bool isSessionRunning = false;
+
+    // Selection State
+    String selectedTaskId = ""; // Now uses String ID
+    String selectedSubtaskId = "";
+    String selectedSubtaskTitle = "";
 
     // User Settings (Persistent)
     String userId = "default_user";
@@ -99,9 +111,15 @@ private:
         
         // Mock data
         if (tasks.empty()) {
-            tasks.push_back({1, "Design system audit", "Define color tokens", 60, 2});
-            tasks.push_back({2, "Write API docs", "Authentication flow", 40, 1});
-            tasks.push_back({3, "Backend cleanup", "Optimize queries", 10, 0});
+            tasks.push_back({"1", "Design system audit", "Define color tokens", 
+                {{"s1", "Define color tokens", false}, {"s2", "Check contrast", false}}, 
+                60, 2, 25});
+            tasks.push_back({"2", "Write API docs", "Authentication flow", 
+                {{"s3", "Authentication flow", false}, {"s4", "Error codes", false}}, 
+                40, 1, 25});
+            tasks.push_back({"3", "Backend cleanup", "Optimize queries", 
+                {{"s5", "Optimize queries", false}}, 
+                10, 0, 25});
         }
     }
     
