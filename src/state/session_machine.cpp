@@ -5,6 +5,7 @@
 #include "session_machine.h"
 #include "app_state.h"
 #include "../api/api_client.h"
+#include "../hardware/motor_bridge.h"
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -27,12 +28,12 @@ void SessionMachine::_transitionTo(SessionState next) {
     // --- ARDUINO HARDWARE BRIDGE ---
     // If we are actively working, spin the motor.
     if (next == SessionState::FOCUS || next == SessionState::HYPERFOCUS) {
-        Serial.println("CMD:START");
+         MotorBridge::getInstance().sendStart();    // ← Sends <START> over Serial2
         Serial.println("[Hardware] Sent START to Arduino");
     } 
     // If we are resting, paused, or finished, stop the motor.
     else {
-        Serial.println("CMD:STOP");
+        MotorBridge::getInstance().sendStop();     // ← Sends <STOP> over Serial2
         Serial.println("[Hardware] Sent STOP to Arduino");
     }
     // -------------------------------
