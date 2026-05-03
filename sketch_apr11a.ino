@@ -6,9 +6,16 @@
 #include "src/state/session_machine.h"
 #include "src/api/api_client.h"
 
+// --- Hardware Bridge Pins ---
+#define ARDUINO_TX_PIN 4
+
 void setup() {
     // 1. Serial Initialization
     Serial.begin(115200);
+    // Wake up the hardware bridge to the Arduino
+    // format: baud_rate, config, RX_pin, TX_pin
+    // We put -1 for RX because we are only sending data to the Arduino, not reading it.
+    Serial1.begin(9600, SERIAL_8N1, -1, ARDUINO_TX_PIN);
     delay(2000); 
     
     // 2. Hardware Pin Verification
