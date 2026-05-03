@@ -27,12 +27,12 @@ void SessionMachine::_transitionTo(SessionState next) {
     // --- ARDUINO HARDWARE BRIDGE ---
     // If we are actively working, spin the motor.
     if (next == SessionState::FOCUS || next == SessionState::HYPERFOCUS) {
-        Serial1.println("START");
+        Serial.println("CMD:START");
         Serial.println("[Hardware] Sent START to Arduino");
     } 
     // If we are resting, paused, or finished, stop the motor.
     else {
-        Serial1.println("STOP");
+        Serial.println("CMD:STOP");
         Serial.println("[Hardware] Sent STOP to Arduino");
     }
     // -------------------------------
