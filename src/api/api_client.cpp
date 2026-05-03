@@ -1,4 +1,5 @@
 #include "api_client.h"
+#include "../state/session_machine.h"
 #include <ArduinoJson.h>
 #include "../state/app_state.h"
 #include "../../config.h"
@@ -160,9 +161,6 @@ void APIClient::onEvent(WStype_t type, uint8_t * payload, size_t length) {
                 bool remoteRunning = pl["isRunning"] | false;
                 
                 AppState& state = AppState::getInstance();
-                // We need to lazily include session_machine to avoid circular deps if any
-                // but since we are in a .cpp it's fine.
-                #include "../state/session_machine.h"
                 SessionMachine& sm = SessionMachine::getInstance();
 
                 if (remoteState == "FOCUS" && !state.isSessionRunning) {
