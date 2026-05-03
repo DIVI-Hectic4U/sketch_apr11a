@@ -24,6 +24,19 @@ void SessionMachine::_transitionTo(SessionState next) {
     _state = next;
     _postStateToBackend(next);
 
+    // --- ARDUINO HARDWARE BRIDGE ---
+    // If we are actively working, spin the motor.
+    if (next == SessionState::FOCUS || next == SessionState::HYPERFOCUS) {
+        Serial1.println("START");
+        Serial.println("[Hardware] Sent START to Arduino");
+    } 
+    // If we are resting, paused, or finished, stop the motor.
+    else {
+        Serial1.println("STOP");
+        Serial.println("[Hardware] Sent STOP to Arduino");
+    }
+    // -------------------------------
+
     // State-specific reset actions
     if (next == SessionState::BREAK) {
         _breakIdleSec = 0;
