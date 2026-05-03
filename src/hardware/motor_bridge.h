@@ -55,9 +55,9 @@ public:
             }
         }
 
-        // Periodic heartbeat every 10 seconds
+        // Periodic heartbeat every 5 seconds
         unsigned long now = millis();
-        if (now - _lastPing >= 10000) {
+        if (now - _lastPing >= 5000) {
             _lastPing = now;
             sendPing();
         }
