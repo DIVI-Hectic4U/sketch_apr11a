@@ -5,6 +5,7 @@
 #include "src/wifi/wifi_manager.h"
 #include "src/state/session_machine.h"
 #include "src/api/api_client.h"
+#include "src/hardware/motor_bridge.h"   // ← NEW: UART bridge to Arduino motor controller
 
 // --- Hardware Bridge Pins ---
 #define ARDUINO_TX_PIN 4
@@ -29,7 +30,10 @@ void setup() {
     WiFiManagerWrapper::getInstance().init();
     APIClient::getInstance().init();
 
-    // 6. Transition to Home after a short delay
+    // 6. Motor Bridge Initialization
+    MotorBridge::getInstance().init();   // ← NEW: Opens Serial2 on GPIO 10/11
+
+    // 7. Transition to Home after a short delay
     delay(2000); 
     UIManager::getInstance().moveTo(Screen::HOME);
     
