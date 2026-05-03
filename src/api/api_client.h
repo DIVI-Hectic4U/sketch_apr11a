@@ -20,7 +20,7 @@ public:
     void update(); // Call in loop()
 
     void fetchDashboard();
-    void startSession(String taskId, int durationMinutes);
+    void startSession(String taskId, String subtaskId, String subtaskTitle, int durationMinutes);
     void stopSession();
     void completeSubtask(String subtaskId);
     void pairDevice(String code);

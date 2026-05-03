@@ -5,7 +5,7 @@
 #include "../../api/api_client.h"
 
 static lv_obj_t* streak_val = NULL;
-static lv_obj_t* xp_val = NULL;
+static lv_obj_t* points_val = NULL;
 static lv_obj_t* tasks_val = NULL;
 static lv_obj_t* spoons_val = NULL;
 static lv_obj_t* wifi_icon = NULL;
@@ -39,7 +39,7 @@ void refresh_screen_home() {
     AppState& state = AppState::getInstance();
     
     if (streak_val) lv_label_set_text(streak_val, (String(state.streakDays) + " days").c_str());
-    if (xp_val) lv_label_set_text(xp_val, String(state.xp).c_str());
+    if (points_val) lv_label_set_text(points_val, String(state.points).c_str());
     if (tasks_val) lv_label_set_text(tasks_val, String(state.tasks.size()).c_str());
     if (spoons_val) lv_label_set_text(spoons_val, String(state.spoonsTotal - state.spoonsUsed).c_str());
     
@@ -121,7 +121,7 @@ lv_obj_t* create_screen_home() {
     };
 
     create_stat("Streak", String(state.streakDays) + " days", lv_color_hex(0xF59E0B), &streak_val);
-    create_stat("XP", String(state.xp), lv_color_hex(0x6366F1), &xp_val);
+    create_stat("Points", String(state.points), lv_color_hex(0x6366F1), &points_val);
     create_stat("Tasks Left", String(state.tasks.size()), lv_color_hex(0x10B981), &tasks_val);
     create_stat("Spoons Left", String(state.spoonsTotal - state.spoonsUsed), lv_color_hex(0x06B6D4), &spoons_val);
 

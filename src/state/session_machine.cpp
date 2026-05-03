@@ -67,8 +67,13 @@ void SessionMachine::start(int plannedMinutes) {
 
     _transitionTo(SessionState::FOCUS);
 
-    // Notify backend: start a new session
-    APIClient::getInstance().startSession(app.currentTaskName, plannedMinutes);
+    // Notify backend: start a new session with full metadata for sync
+    APIClient::getInstance().startSession(
+        app.selectedTaskId,
+        app.selectedSubtaskId,
+        app.selectedSubtaskTitle,
+        plannedMinutes
+    );
 }
 
 void SessionMachine::takeBreak() {

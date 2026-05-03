@@ -41,9 +41,12 @@ void APIClient::fetchDashboard() {
     if (isConnected) ws.sendTXT("{\"action\":\"fetch_dashboard\"}");
 }
 
-void APIClient::startSession(String taskId, int durationMinutes) {
+void APIClient::startSession(String taskId, String subtaskId, String subtaskTitle, int durationMinutes) {
     if (isConnected) {
-        String msg = "{\"action\":\"start\",\"duration\":" + String(durationMinutes) + ",\"taskId\":\"" + taskId + "\"}";
+        String msg = "{\"action\":\"start\",\"duration\":" + String(durationMinutes) + 
+                     ",\"taskId\":\"" + taskId + 
+                     "\",\"subtaskId\":\"" + subtaskId + 
+                     "\",\"subtaskTitle\":\"" + subtaskTitle + "\"}";
         ws.sendTXT(msg);
     }
 }
@@ -152,7 +155,34 @@ void APIClient::onEvent(WStype_t type, uint8_t * payload, size_t length) {
                 state.dashboardDirty = true;
             }
             else if (msgType == "timer_update") {
-                // Future use
+                JsonObject pl = doc["payload"];
+                String remoteState = pl["state"] | "IDLE";
+                bool remoteRunning = pl["isRunning"] | false;
+                
+                AppState& state = AppState::getInstance();
+                // We need to lazily include session_machine to avoid circular deps if any
+                // but since we are in a .cpp it's fine.
+                #include "../state/session_machine.h"
+                SessionMachine& sm = SessionMachine::getInstance();
+
+                if (remoteState == "FOCUS" && !state.isSessionRunning) {
+                    // Remote started a timer
+                    int planned = pl["plannedSeconds"] | 0;
+                    state.currentTaskName = pl["subtaskTitle"] | "Remote Task";
+                    state.selectedTaskId = pl["taskId"] | "";
+                    state.selectedSubtaskId = pl["subtaskId"] | "";
+                    state.selectedSubtaskTitle = state.currentTaskName;
+                    
+                    sm.start(planned / 60);
+                    state.dashboardDirty = true;
+                    Serial.println("WS: Remote session started, syncing local machine.");
+                } 
+                else if ((remoteState == "IDLE" || remoteState == "COMPLETED") && state.isSessionRunning) {
+                    // Remote stopped the timer
+                    sm.stop();
+                    state.dashboardDirty = true;
+                    Serial.println("WS: Remote session stopped, syncing local machine.");
+                }
             }
             else if (msgType == "pair_success") {
                 String token = doc["payload"]["deviceToken"] | "";
