@@ -186,19 +186,20 @@ void APIClient::onEvent(WStype_t type, uint8_t * payload, size_t length) {
                     Serial.println("WS: Remote session started, syncing local machine.");
                 } 
                 else if (remoteState == "FOCUS" && state.isSessionRunning) {
-                    // Remote resumed the timer
-                    if (sm.getState() == SessionState::DISENGAGED || sm.getState() == SessionState::BREAK) {
-                        sm.resume();
-                        state.dashboardDirty = true;
-                        Serial.println("WS: Remote session resumed.");
-                    }
-                }
-                else if (remoteState == "DISENGAGED" && state.isSessionRunning) {
-                    // Remote paused the timer
-                    if (sm.getState() == SessionState::FOCUS || sm.getState() == SessionState::HYPERFOCUS) {
-                        sm.pause();
-                        state.dashboardDirty = true;
-                        Serial.println("WS: Remote session paused.");
+                    if (remoteRunning) {
+                        // Remote resumed the timer
+                        if (sm.getState() == SessionState::DISENGAGED || sm.getState() == SessionState::BREAK) {
+                            sm.resume();
+                            state.dashboardDirty = true;
+                            Serial.println("WS: Remote session resumed.");
+                        }
+                    } else {
+                        // Remote paused the timer
+                        if (sm.getState() == SessionState::FOCUS || sm.getState() == SessionState::HYPERFOCUS) {
+                            sm.pause();
+                            state.dashboardDirty = true;
+                            Serial.println("WS: Remote session paused.");
+                        }
                     }
                 }
                 else if ((remoteState == "IDLE" || remoteState == "COMPLETED") && state.isSessionRunning) {

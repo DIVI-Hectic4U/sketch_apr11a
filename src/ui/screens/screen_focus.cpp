@@ -93,6 +93,16 @@ static void on_tick(lv_timer_t* timer) {
     }
 }
 
+static void focus_scr_delete_cb(lv_event_t* e) {
+    if (s_tick_timer) {
+        lv_timer_del(s_tick_timer);
+        s_tick_timer = NULL;
+    }
+    s_timer_lbl = NULL;
+    s_state_lbl = NULL;
+    s_pause_lbl = NULL;
+}
+
 lv_obj_t* create_screen_focus() {
     s_timer_lbl = NULL;
     s_state_lbl = NULL;
@@ -196,6 +206,9 @@ lv_obj_t* create_screen_focus() {
     // Tick Timer (1s)
     s_tick_timer = lv_timer_create(on_tick, 1000, NULL);
     on_tick(s_tick_timer); // Initial call
+
+    // Clean up when screen is deleted
+    lv_obj_add_event_cb(scr, focus_scr_delete_cb, LV_EVENT_DELETE, NULL);
 
     return scr;
 }

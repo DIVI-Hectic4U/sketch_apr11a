@@ -49,12 +49,27 @@ void refresh_screen_home() {
     }
 }
 
+static lv_timer_t* home_timer = NULL;
+
+static void home_scr_delete_cb(lv_event_t* e) {
+    if (home_timer) {
+        lv_timer_del(home_timer);
+        home_timer = NULL;
+    }
+    streak_val = NULL;
+    points_val = NULL;
+    tasks_val = NULL;
+    spoons_val = NULL;
+    wifi_icon = NULL;
+}
+
 lv_obj_t* create_screen_home() {
     streak_val = NULL;
     points_val = NULL;
     tasks_val = NULL;
     spoons_val = NULL;
     wifi_icon = NULL;
+    home_timer = NULL;
     active_screen_obj = NULL;
     
     AppState& state = AppState::getInstance();
@@ -146,7 +161,9 @@ lv_obj_t* create_screen_home() {
     lv_obj_set_style_text_font(start_lbl, &lv_font_montserrat_14, 0);
     lv_obj_center(start_lbl);
 
-    lv_timer_create(update_home_data, 60000, NULL);
+    home_timer = lv_timer_create(update_home_data, 60000, NULL);
+
+    lv_obj_add_event_cb(scr, home_scr_delete_cb, LV_EVENT_DELETE, NULL);
 
     return scr;
 }
