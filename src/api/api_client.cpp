@@ -9,6 +9,7 @@ static void wsEventTrampoline(WStype_t type, uint8_t * payload, size_t length) {
 }
 
 void APIClient::init() {
+    randomSeed(esp_random()); // Seed with hardware entropy
     Serial.println("WS: API Client initialized.");
 }
 
@@ -60,7 +61,7 @@ void APIClient::completeSubtask(String subtaskId) {
 
 void APIClient::pairDevice(String code) {
     if (isConnected) {
-        String msg = "{\"action\":\"pair\",\"code\":\"" + code + "\"}";
+        String msg = "{\"action\":\"pair_init\",\"code\":\"" + code + "\"}";
         ws.sendTXT(msg);
     }
 }
@@ -152,6 +153,19 @@ void APIClient::onEvent(WStype_t type, uint8_t * payload, size_t length) {
             }
             else if (msgType == "timer_update") {
                 // Future use
+            }
+            else if (msgType == "pair_success") {
+                String token = doc["payload"]["deviceToken"] | "";
+                if (token.length() > 0) {
+                    AppState& state = AppState::getInstance();
+                    state.deviceToken = token;
+                    state.save();
+                    state.dashboardDirty = true;
+                    Serial.println("WS: Device paired successfully! Saving token...");
+                    // Force reconnection with new token on next update
+                    wsInitialized = false;
+                    ws.disconnect();
+                }
             }
             break;
         }

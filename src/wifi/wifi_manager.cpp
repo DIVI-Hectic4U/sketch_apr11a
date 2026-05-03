@@ -23,15 +23,15 @@ void WiFiManagerWrapper::init() {
 void WiFiManagerWrapper::scanNetworksAsync() {
     if (_isScanning) return;
     Serial.println("WiFi: Starting async scan...");
-    WiFi.mode(WIFI_STA);
-    WiFi.disconnect();
-    delay(100);
     _isScanning = true;
     WiFi.scanNetworks(true); // async = true
 }
 
 void WiFiManagerWrapper::connectTo(String ssid, String password) {
     Serial.printf("WiFi: Connecting to %s...\n", ssid.c_str());
+    
+    // Stop any existing connection attempt to allow new config to be set
+    WiFi.disconnect();
     
     Preferences prefs;
     prefs.begin("wifi", false);

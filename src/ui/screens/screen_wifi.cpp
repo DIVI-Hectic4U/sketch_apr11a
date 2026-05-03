@@ -25,6 +25,7 @@ static void back_event_cb(lv_event_t * e) {
 }
 
 static void update_network_list() {
+    if (!network_list || !lv_obj_is_valid(network_list)) return;
     lv_obj_clean(network_list);
     AppState& state = AppState::getInstance();
     
@@ -64,7 +65,9 @@ static void scan_timer_cb(lv_timer_t * timer) {
     if (!WiFiManagerWrapper::getInstance().isScanning()) {
         lv_timer_del(scan_timer);
         scan_timer = NULL;
-        update_network_list();
+        if (network_list && lv_obj_is_valid(network_list)) {
+            update_network_list();
+        }
     }
 }
 
@@ -110,11 +113,19 @@ static void pair_timer_cb(lv_timer_t* t) {
 
 static void pair_btn_cb(lv_event_t* e) {
     AppState& state = AppState::getInstance();
+    
+    // Revoke if already paired
     if (state.deviceToken.length() > 0) {
         state.deviceToken = "";
         state.save();
         lv_label_set_text(pair_lbl, "Start Pairing");
         lv_obj_set_style_bg_color(pair_btn, lv_color_hex(0x3B82F6), 0);
+        return;
+    }
+
+    // Check WS connection before allowing pairing code generation
+    if (!APIClient::getInstance().isConnected) {
+        lv_label_set_text(pair_lbl, "No Connection");
         return;
     }
 
