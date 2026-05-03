@@ -42,6 +42,7 @@ static void end_task_cb(lv_event_t* e) {
     
     // Stop session machine
     SessionMachine::getInstance().stop();
+    APIClient::getInstance().stopSession();
     
     // Clean up timer
     if (s_tick_timer) {
@@ -93,6 +94,11 @@ static void on_tick(lv_timer_t* timer) {
 }
 
 lv_obj_t* create_screen_focus() {
+    s_timer_lbl = NULL;
+    s_state_lbl = NULL;
+    s_pause_lbl = NULL;
+    s_tick_timer = NULL;
+    
     AppState& app = AppState::getInstance();
     SessionMachine& sm = SessionMachine::getInstance();
 

@@ -50,6 +50,13 @@ void refresh_screen_home() {
 }
 
 lv_obj_t* create_screen_home() {
+    streak_val = NULL;
+    points_val = NULL;
+    tasks_val = NULL;
+    spoons_val = NULL;
+    wifi_icon = NULL;
+    active_screen_obj = NULL;
+    
     AppState& state = AppState::getInstance();
 
     lv_obj_t* scr = lv_obj_create(NULL);

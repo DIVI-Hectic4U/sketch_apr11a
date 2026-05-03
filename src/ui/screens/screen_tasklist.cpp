@@ -112,6 +112,9 @@ void refresh_screen_tasklist() {
 }
 
 lv_obj_t* create_screen_tasklist() {
+    list_cont = NULL;
+    active_screen_obj = NULL;
+    
     AppState& state = AppState::getInstance();
 
     lv_obj_t* scr = lv_obj_create(NULL);

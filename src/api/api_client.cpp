@@ -111,7 +111,7 @@ void APIClient::onEvent(WStype_t type, uint8_t * payload, size_t length) {
                 state.pomodoroMode = stats["pomodoroMode"] | "flexible";
 
                 JsonObject spoons = stats["spoonState"];
-                state.spoonsUsed = spoons["remaining"] | 12;
+                state.spoonsUsed = spoons["spoonsUsed"] | 0;
                 state.spoonsTotal = spoons["total"] | 12;
 
                 // CRITICAL: Clear existing tasks before sync to prevent duplication/leaks

@@ -3,6 +3,7 @@
 #include "../../state/app_state.h"
 #include "../ui_manager.h"
 #include "../../state/session_machine.h"
+#include "../../api/api_client.h"
 
 static lv_obj_t* list_cont = NULL;
 static lv_obj_t* title_lbl = NULL;
@@ -44,6 +45,12 @@ static void start_subtask_event_cb(lv_event_t* e) {
     state.currentSubtaskName = sub.title;
     
     SessionMachine::getInstance().start(task->suggestedDuration);
+    APIClient::getInstance().startSession(
+        state.selectedTaskId,
+        state.selectedSubtaskId,
+        state.selectedSubtaskTitle,
+        task->suggestedDuration
+    );
     UIManager::getInstance().moveTo(Screen::FOCUS);
 }
 
@@ -117,6 +124,10 @@ void refresh_screen_subtasklist() {
 }
 
 lv_obj_t* create_screen_subtasklist() {
+    list_cont = NULL;
+    title_lbl = NULL;
+    active_screen_obj = NULL;
+    
     AppState& state = AppState::getInstance();
     
     // Find selected task
