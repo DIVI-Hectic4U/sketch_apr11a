@@ -2,6 +2,7 @@
 #include "../state/session_machine.h"
 #include <ArduinoJson.h>
 #include "../state/app_state.h"
+#include "../ui/ui_manager.h"
 #include "../../config.h"
 
 // Static trampoline
@@ -50,6 +51,14 @@ void APIClient::startSession(String taskId, String subtaskId, String subtaskTitl
                      "\",\"subtaskTitle\":\"" + subtaskTitle + "\"}";
         ws.sendTXT(msg);
     }
+}
+
+void APIClient::pauseSession() {
+    if (isConnected) ws.sendTXT("{\"action\":\"pause\"}");
+}
+
+void APIClient::resumeSession() {
+    if (isConnected) ws.sendTXT("{\"action\":\"resume\"}");
 }
 
 void APIClient::stopSession() {
@@ -173,12 +182,30 @@ void APIClient::onEvent(WStype_t type, uint8_t * payload, size_t length) {
                     
                     sm.start(planned / 60);
                     state.dashboardDirty = true;
+                    UIManager::getInstance().moveTo(Screen::FOCUS);
                     Serial.println("WS: Remote session started, syncing local machine.");
                 } 
+                else if (remoteState == "FOCUS" && state.isSessionRunning) {
+                    // Remote resumed the timer
+                    if (sm.getState() == SessionState::DISENGAGED || sm.getState() == SessionState::BREAK) {
+                        sm.resume();
+                        state.dashboardDirty = true;
+                        Serial.println("WS: Remote session resumed.");
+                    }
+                }
+                else if (remoteState == "DISENGAGED" && state.isSessionRunning) {
+                    // Remote paused the timer
+                    if (sm.getState() == SessionState::FOCUS || sm.getState() == SessionState::HYPERFOCUS) {
+                        sm.pause();
+                        state.dashboardDirty = true;
+                        Serial.println("WS: Remote session paused.");
+                    }
+                }
                 else if ((remoteState == "IDLE" || remoteState == "COMPLETED") && state.isSessionRunning) {
                     // Remote stopped the timer
                     sm.stop();
                     state.dashboardDirty = true;
+                    UIManager::getInstance().moveTo(Screen::HOME);
                     Serial.println("WS: Remote session stopped, syncing local machine.");
                 }
             }

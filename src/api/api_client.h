@@ -21,6 +21,8 @@ public:
 
     void fetchDashboard();
     void startSession(String taskId, String subtaskId, String subtaskTitle, int durationMinutes);
+    void pauseSession();
+    void resumeSession();
     void stopSession();
     void completeSubtask(String subtaskId);
     void pairDevice(String code);

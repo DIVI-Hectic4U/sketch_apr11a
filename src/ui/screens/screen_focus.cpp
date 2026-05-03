@@ -24,8 +24,10 @@ static void toggle_cb(lv_event_t* e) {
     SessionState st = sm.getState();
     if (st == SessionState::FOCUS || st == SessionState::HYPERFOCUS) {
         sm.pause();
+        APIClient::getInstance().pauseSession();
     } else if (st == SessionState::DISENGAGED || st == SessionState::BREAK) {
         sm.resume();
+        APIClient::getInstance().resumeSession();
     }
 }
 
