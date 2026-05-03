@@ -26,6 +26,7 @@ public:
     void stopSession();
     void completeSubtask(String subtaskId);
     void pairDevice(String code);
+    void forceReconnect();
 
     bool isConnected = false;
     void onEvent(WStype_t type, uint8_t * payload, size_t length);
@@ -35,6 +36,11 @@ private:
     
     WebSocketsClient ws;
     void connect();
+
+    // Stale token detection: track consecutive disconnects before first connect
+    bool _everConnected = false;       // true once WStype_CONNECTED fires
+    uint8_t _disconnectCount = 0;      // resets on successful connect
+    unsigned long _lastDisconnectMs = 0;
 };
 
 #endif // API_CLIENT_H

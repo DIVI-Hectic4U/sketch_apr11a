@@ -103,11 +103,19 @@ static void ta_event_cb(lv_event_t * e) {
 
 static void pair_timer_cb(lv_timer_t* t) {
     AppState& state = AppState::getInstance();
+    // Pairing success — token received
     if (state.deviceToken.length() > 0) {
         lv_label_set_text(pair_lbl, "Paired!");
         lv_obj_set_style_bg_color(pair_btn, lv_color_hex(0x10B981), 0);
         lv_timer_del(pair_timer);
         pair_timer = NULL;
+        pairing_code = ""; // clear the pending code
+        return;
+    }
+    // If WS just connected and we still have a pending code, resend pair_init
+    if (pairing_code.length() > 0 && APIClient::getInstance().isConnected) {
+        Serial.println("Pair: WS connected, sending pair_init...");
+        APIClient::getInstance().pairDevice(pairing_code);
     }
 }
 
@@ -118,22 +126,31 @@ static void pair_btn_cb(lv_event_t* e) {
     if (state.deviceToken.length() > 0) {
         state.deviceToken = "";
         state.save();
+        pairing_code = "";
         lv_label_set_text(pair_lbl, "Start Pairing");
         lv_obj_set_style_bg_color(pair_btn, lv_color_hex(0x3B82F6), 0);
+        APIClient::getInstance().forceReconnect();
         return;
     }
 
-    // Check WS connection before allowing pairing code generation
-    if (!APIClient::getInstance().isConnected) {
-        lv_label_set_text(pair_lbl, "No Connection");
-        return;
+    // Generate and display the pairing code immediately — no WS needed for this step.
+    // pair_timer will send pair_init as soon as WS connects.
+    if (pairing_code.length() == 0) {
+        pairing_code = String(random(100000, 999999));
+    }
+    String display = "Code: " + pairing_code;
+    lv_label_set_text(pair_lbl, display.c_str());
+    lv_obj_set_style_bg_color(pair_btn, lv_color_hex(0x3B82F6), 0);
+
+    // If already connected, send pair_init right away
+    if (APIClient::getInstance().isConnected) {
+        APIClient::getInstance().pairDevice(pairing_code);
+    } else {
+        // Kick the WS to reconnect (it may have stopped after repeated failures)
+        APIClient::getInstance().forceReconnect();
+        Serial.println("Pair: code generated, reconnecting WS to send pair_init...");
     }
 
-    pairing_code = String(random(100000, 999999));
-    lv_label_set_text(pair_lbl, ("Code: " + pairing_code).c_str());
-    
-    APIClient::getInstance().pairDevice(pairing_code);
-    
     if (!pair_timer) {
         pair_timer = lv_timer_create(pair_timer_cb, 1000, NULL);
     }
@@ -147,8 +164,19 @@ void refresh_screen_wifi() {
     
     if (pair_btn && pair_lbl) {
         bool paired = state.deviceToken.length() > 0;
-        lv_label_set_text(pair_lbl, paired ? "Paired" : "Start Pairing");
-        lv_obj_set_style_bg_color(pair_btn, paired ? lv_color_hex(0x10B981) : lv_color_hex(0x3B82F6), 0);
+        if (paired) {
+            lv_label_set_text(pair_lbl, "Paired");
+            lv_obj_set_style_bg_color(pair_btn, lv_color_hex(0x10B981), 0);
+        } else if (pairing_code.length() > 0) {
+            // Code already generated — show it (don't overwrite with "Connecting")
+            String display = "Code: " + pairing_code;
+            lv_label_set_text(pair_lbl, display.c_str());
+            lv_obj_set_style_bg_color(pair_btn, lv_color_hex(0x3B82F6), 0);
+        } else {
+            // No code yet — simple ready state
+            lv_label_set_text(pair_lbl, "Start Pairing");
+            lv_obj_set_style_bg_color(pair_btn, lv_color_hex(0x3B82F6), 0);
+        }
     }
 }
 

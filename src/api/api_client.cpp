@@ -17,12 +17,20 @@ void APIClient::init() {
 
 void APIClient::connect() {
     AppState& state = AppState::getInstance();
-    if (state.deviceToken.length() == 0 && state.userId.length() == 0) return;
 
-    String path = (state.deviceToken.length() > 0) 
-                  ? "/?deviceToken=" + state.deviceToken 
-                  : "/?token=" + state.userId;
+    String path;
+    if (state.deviceToken.length() > 0) {
+        path = "/?deviceToken=" + state.deviceToken;
+    } else {
+        // No token: connect with deviceId so backend can route pairing
+        path = "/?deviceId=" + state.deviceId;
+    }
 
+    // Reset detection state for new connection attempt
+    _everConnected = false;
+    _disconnectCount = 0;
+
+    Serial.printf("WS: Connecting to %s\n", path.c_str());
     ws.beginSSL("backend-node-ascent.onrender.com", 443, path.c_str());
     ws.onEvent(wsEventTrampoline);
     ws.setReconnectInterval(5000);
@@ -32,11 +40,19 @@ static bool wsInitialized = false;
 
 void APIClient::update() {
     AppState& state = AppState::getInstance();
-    if (!wsInitialized && state.isWifiConnected && state.userId.length() > 0) {
+    // Connect whenever WiFi is up — even with no user/token, so pairing can work
+    if (!wsInitialized && state.isWifiConnected) {
         connect();
         wsInitialized = true;
     }
     if (wsInitialized) ws.loop();
+}
+
+void APIClient::forceReconnect() {
+    _everConnected = false;
+    _disconnectCount = 0;
+    wsInitialized = false;
+    ws.disconnect();
 }
 
 void APIClient::fetchDashboard() {
@@ -74,18 +90,55 @@ void APIClient::completeSubtask(String subtaskId) {
 
 void APIClient::pairDevice(String code) {
     if (isConnected) {
-        String msg = "{\"action\":\"pair_init\",\"code\":\"" + code + "\"}";
+        AppState& state = AppState::getInstance();
+        String msg = "{\"action\":\"pair_init\",\"code\":\"" + code + 
+                     "\",\"deviceId\":\"" + state.deviceId + "\"}";
         ws.sendTXT(msg);
     }
 }
 
 void APIClient::onEvent(WStype_t type, uint8_t * payload, size_t length) {
     switch(type) {
-        case WStype_DISCONNECTED:
+        case WStype_DISCONNECTED: {
+            Serial.println("WS: Disconnected");
             isConnected = false;
+            AppState::getInstance().dashboardDirty = true;
+
+            // Stale/revoked token detection:
+            // If we have a token but NEVER successfully connected, the token was rejected.
+            // After 3 consecutive rejections, wipe the token and reconnect clean.
+            if (!_everConnected) {
+                _disconnectCount++;
+                _lastDisconnectMs = millis();
+                Serial.printf("WS: Rejection count: %d\n", _disconnectCount);
+
+                if (_disconnectCount >= 3) {
+                    AppState& state = AppState::getInstance();
+                    if (state.deviceToken.length() > 0) {
+                        // Token was revoked — clear it and retry once with clean path
+                        Serial.println("WS: Token rejected 3x — clearing stale token, retrying...");
+                        state.deviceToken = "";
+                        state.save();
+                        wsInitialized = false;
+                        _disconnectCount = 0;
+                    } else {
+                        // Already on clean path and still failing — stop retrying.
+                        // User must tap "Start Pairing" to trigger a manual reconnect.
+                        Serial.println("WS: Server unreachable — stopping auto-reconnect.");
+                        wsInitialized = false;
+                        ws.disconnect();
+                        // Don't reset _disconnectCount — keeps us stopped
+                    }
+                }
+            }
             break;
+        }
         case WStype_CONNECTED:
+            Serial.println("WS: Connected");
             isConnected = true;
+            _everConnected = true;   // successfully connected — token is valid
+            _disconnectCount = 0;    // reset rejection counter
+            AppState::getInstance().dashboardDirty = true;
             fetchDashboard();
             break;
         case WStype_TEXT: {
@@ -212,15 +265,16 @@ void APIClient::onEvent(WStype_t type, uint8_t * payload, size_t length) {
             }
             else if (msgType == "pair_success") {
                 String token = doc["payload"]["deviceToken"] | "";
+                String uid   = doc["payload"]["userId"] | "";
                 if (token.length() > 0) {
                     AppState& state = AppState::getInstance();
                     state.deviceToken = token;
+                    if (uid.length() > 0) state.userId = uid;
                     state.save();
                     state.dashboardDirty = true;
-                    Serial.println("WS: Device paired successfully! Saving token...");
+                    Serial.printf("WS: Device paired successfully! userId=%s\n", state.userId.c_str());
                     // Force reconnection with new token on next update
-                    wsInitialized = false;
-                    ws.disconnect();
+                    forceReconnect();
                 }
             }
             break;
