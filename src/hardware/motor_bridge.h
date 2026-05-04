@@ -63,13 +63,19 @@ public:
         }
     }
 
-    /** Send <START> — motor begins rotation */
+    /** Send <START> — motor begins forward rotation */
     void sendStart() {
         Serial2.print("<START>");
         Serial.println("[Bridge] Sent <START>");
     }
 
-    /** Send <STOP> — motor halts and de-energizes */
+    /** Send <PAUSE> — motor stops in place, holds position */
+    void sendPause() {
+        Serial2.print("<PAUSE>");
+        Serial.println("[Bridge] Sent <PAUSE>");
+    }
+
+    /** Send <STOP> — motor reverses back to starting position */
     void sendStop() {
         Serial2.print("<STOP>");
         Serial.println("[Bridge] Sent <STOP>");
