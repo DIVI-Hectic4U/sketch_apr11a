@@ -5,7 +5,7 @@
 #include "session_machine.h"
 #include "app_state.h"
 #include "../api/api_client.h"
-#include "../hardware/motor_bridge.h"
+#include "../hardware/motor_bridge.h"   // ← NEW: UART bridge to Arduino motor controller
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -26,15 +26,18 @@ void SessionMachine::_transitionTo(SessionState next) {
     _postStateToBackend(next);
 
     // --- ARDUINO HARDWARE BRIDGE ---
-    // If we are actively working, spin the motor.
     if (next == SessionState::FOCUS || next == SessionState::HYPERFOCUS) {
-         MotorBridge::getInstance().sendStart();    // ← Sends <START> over Serial2
+        MotorBridge::getInstance().sendStart();    // Motor spins forward
         Serial.println("[Hardware] Sent START to Arduino");
-    } 
-    // If we are resting, paused, or finished, stop the motor.
+    }
+    else if (next == SessionState::COMPLETED || next == SessionState::IDLE) {
+        MotorBridge::getInstance().sendStop();     // Motor REVERSES to start
+        Serial.println("[Hardware] Sent STOP (return to start) to Arduino");
+    }
     else {
-        MotorBridge::getInstance().sendStop();     // ← Sends <STOP> over Serial2
-        Serial.println("[Hardware] Sent STOP to Arduino");
+        // BREAK or DISENGAGED — pause in place
+        MotorBridge::getInstance().sendPause();    // Motor holds position
+        Serial.println("[Hardware] Sent PAUSE (hold position) to Arduino");
     }
     // -------------------------------
 
@@ -85,16 +88,16 @@ void SessionMachine::start(int plannedMinutes) {
 void SessionMachine::takeBreak() {
     if (_state == SessionState::FOCUS || _state == SessionState::HYPERFOCUS) {
         _toastActive = false;
-        
+
         AppState& app = AppState::getInstance();
         int breakMin = app.preferredBreakDuration;
-        
+
         // Pomodoro Rule: Long break after 4 sessions
         if (app.cycleCount > 0 && (app.cycleCount % 4 == 0)) {
             breakMin = 15;
             Serial.println("SM: 4th cycle reached → 15m Long Break");
         }
-        
+
         _plannedSec = breakMin * 60;
         _breakIdleSec = 0; // repurposed as break elapsed
         _transitionTo(SessionState::BREAK);
@@ -137,6 +140,7 @@ void SessionMachine::stop() {
 
 // ---------------------------------------------------------------------------
 // tick() — called every 100ms from session_machine_task (Core 0)
+
 // Only seconds-level state advances happen here; arc animation runs in LVGL.
 // ---------------------------------------------------------------------------
 void SessionMachine::tick() {
@@ -252,7 +256,8 @@ int SessionMachine::getOverflowArcAngle() const {
 String SessionMachine::getTimeLabelString() const {
     char buf[16];
     switch (_state) {
-        case SessionState::FOCUS: {
+
+case SessionState::FOCUS: {
             int rem = getRemainingSeconds();
             snprintf(buf, sizeof(buf), "%02d:%02d", rem / 60, rem % 60);
             return String(buf);
